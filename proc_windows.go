@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"unsafe"
@@ -192,19 +193,43 @@ func hostStats() (float64, uint64, uint64) {
 	return hostCPU, hostMemUsed, hostMemTotal
 }
 
-// reguli firewall pentru suită + toate modulele (porturi pe program, orice profil)
+// reguli firewall pentru suită + module + ffmpeg: șterge ÎNTÂI toate regulile existente pe acel
+// program (inclusiv regulile "Block" create automat de Windows la prima rulare, care blochează
+// multicastul pe placa "Publică"), apoi Allow TCP+UDP pe toate profilurile, cu edge traversal.
 func firewallSetup() {
-	exe, _ := os.Executable()
-	progs := map[string]string{"nTs-Suite": exe}
-	for _, m := range modules {
-		progs["nTs-Suite "+m.Name] = m.BinPath()
+	progs := map[string]bool{}
+	if exe, err := os.Executable(); err == nil {
+		progs[exe] = true
 	}
-	progs["nTs-Suite ffmpeg"] = filepath.Join(dataDir, "bin", "ffmpeg.exe")
-	for name, prog := range progs {
-		run("netsh", "advfirewall", "firewall", "delete", "rule", "name="+name)
+	for _, m := range modules {
+		progs[m.BinPath()] = true
+	}
+	filepath.WalkDir(dataDir, func(p string, d os.DirEntry, err error) error {
+		if err == nil && !d.IsDir() {
+			n := strings.ToLower(d.Name())
+			if strings.HasSuffix(n, ".exe") && (strings.HasPrefix(n, "ffmpeg") || strings.HasPrefix(n, "ffprobe") ||
+				filepath.Dir(p) == filepath.Join(dataDir, "bin")) {
+				progs[p] = true
+			}
+		}
+		return nil
+	})
+	for _, n := range []string{"ffmpeg", "ffprobe"} {
+		if p, err := exec.LookPath(n); err == nil {
+			if a, err := filepath.Abs(p); err == nil {
+				progs[a] = true
+			}
+		}
+	}
+	for prog := range progs {
+		if _, err := os.Stat(prog); err != nil {
+			continue
+		}
+		run("netsh", "advfirewall", "firewall", "delete", "rule", "name=all", "program="+prog)
+		name := "nTs-Suite " + strings.TrimSuffix(filepath.Base(prog), ".exe")
 		for _, proto := range []string{"TCP", "UDP"} {
 			run("netsh", "advfirewall", "firewall", "add", "rule", "name="+name, "dir=in", "action=allow",
-				"program="+prog, "protocol="+proto, "profile=any", "enable=yes")
+				"program="+prog, "protocol="+proto, "profile=any", "edge=yes", "enable=yes")
 		}
 	}
 }

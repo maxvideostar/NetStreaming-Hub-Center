@@ -17,7 +17,7 @@ import (
 	"github.com/kardianos/service"
 )
 
-const version = "1.0.1"
+const version = "1.0.2"
 
 type program struct {
 	srv *http.Server
@@ -29,8 +29,8 @@ func (p *program) Start(s service.Service) error {
 }
 
 func (p *program) run() {
-	if runtime.GOOS == "windows" && !service.Interactive() {
-		firewallSetup()
+	if runtime.GOOS == "windows" {
+		firewallSetup() // la fiecare pornire (fără drepturi de admin pur și simplu nu are efect)
 	}
 	go statsLoop()
 	c := getCfg()
