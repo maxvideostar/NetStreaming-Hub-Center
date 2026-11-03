@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ro"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>nTs-Suite · Autentificare</title>
+<link rel="icon" href="/favicon.svg">
+<style>
+:root{--bg:#0a0e13;--panel:#111821;--line:#1f2a36;--tx:#d7e0ea;--mut:#7b8a9a;--acc:#3ddc84;--bad:#f25f5c}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(1200px 600px at 70% -10%,#13241c 0,transparent 60%),var(--bg);color:var(--tx);font:15px/1.45 "Segoe UI",system-ui,-apple-system,sans-serif;padding:16px}
+.card{width:100%;max-width:360px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:28px 26px 24px;box-shadow:0 20px 60px #0008}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:22px}
+.brand b{font-size:19px;letter-spacing:.2px}.brand span{color:var(--acc)}
+.sub{color:var(--mut);font-size:13px;margin:-14px 0 20px}
+label{display:block;font-size:12px;color:var(--mut);margin:12px 0 6px;text-transform:uppercase;letter-spacing:.06em}
+input{width:100%;padding:11px 12px;background:#0b1118;border:1px solid var(--line);border-radius:9px;color:var(--tx);font-size:15px;outline:none}
+input:focus{border-color:var(--acc)}
+button{width:100%;margin-top:20px;padding:11px;border:0;border-radius:9px;background:var(--acc);color:#04140b;font-weight:650;font-size:15px;cursor:pointer}
+.err{display:none;margin-top:14px;color:var(--bad);font-size:13px}
+</style></head>
+<body>
+<form class="card" method="post" action="/login">
+  <div class="brand"><img src="/favicon.svg" width="30" height="30" alt=""><b>nTs<span>·</span>Suite</b></div>
+  <div class="sub">ProxyHub · RTMP · VideoEncoder · Rec-Martori · nTs-relay</div>
+  <label for="u">Utilizator</label><input id="u" name="username" autocomplete="username" autofocus required>
+  <label for="p">Parolă</label><input id="p" name="password" type="password" autocomplete="current-password" required>
+  <button type="submit">Intră</button>
+  <div class="err" id="e"></div>
+</form>
+<script>
+var q=new URLSearchParams(location.search).get('e'),e=document.getElementById('e');
+if(q){e.style.display='block';e.textContent=q==='locked'?'Prea multe încercări. Reîncearcă peste 5 minute.':'Utilizator sau parolă greșită.'}
+</script>
+</body></html>

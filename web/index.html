@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="ro"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>nTs-Suite</title>
+<link rel="icon" href="/favicon.svg">
+<style>
+:root{--bg:#0a0e13;--side:#0d131a;--panel:#111821;--panel2:#0e151d;--line:#1d2834;--tx:#d7e0ea;--mut:#7b8a9a;--acc:#3ddc84;--warn:#f5b041;--bad:#f25f5c;--blue:#5aa9ff;--mono:"Cascadia Mono",Consolas,"SF Mono",Menlo,monospace}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--tx);font:14px/1.45 "Segoe UI",system-ui,-apple-system,sans-serif;display:flex;overflow:hidden}
+button{font:inherit;cursor:pointer}
+a{color:var(--blue)}
+/* sidebar */
+.side{width:236px;flex:none;background:var(--side);border-right:1px solid var(--line);display:flex;flex-direction:column}
+.brand{display:flex;align-items:center;gap:10px;padding:18px 18px 14px}
+.brand b{font-size:17px}.brand b span{color:var(--acc)}
+.nav{flex:1;overflow:auto;padding:6px 10px}
+.nav .sec{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);padding:14px 10px 6px}
+.nav button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;color:var(--tx);padding:9px 10px;border-radius:8px;margin:1px 0}
+.nav button:hover{background:#ffffff08}
+.nav button.on{background:#3ddc8414;color:#fff;box-shadow:inset 2px 0 0 var(--acc)}
+.nav .ic{width:18px;text-align:center;color:var(--mut)}
+.nav .nm{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dot{width:8px;height:8px;border-radius:50%;background:#4a5664;flex:none}
+.dot.run{background:var(--acc);box-shadow:0 0 0 3px #3ddc8422}
+.dot.err{background:var(--bad);box-shadow:0 0 0 3px #f25f5c22}
+.dot.wait{background:var(--warn)}
+.sfoot{padding:12px 18px;border-top:1px solid var(--line);font-size:12px;color:var(--mut);display:flex;justify-content:space-between;align-items:center}
+.sfoot a{color:var(--mut);text-decoration:none}.sfoot a:hover{color:var(--tx)}
+/* main */
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.top{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--line);background:var(--panel2);min-height:58px;flex-wrap:wrap}
+.top h1{font-size:17px;margin:0;font-weight:600}
+.top .meta{color:var(--mut);font-size:12.5px;font-family:var(--mono)}
+.sp{flex:1}
+.btn{background:#18222d;border:1px solid var(--line);color:var(--tx);padding:7px 12px;border-radius:8px;font-size:13px}
+.btn:hover{border-color:#2d3b4a}
+.btn.go{background:var(--acc);border-color:var(--acc);color:#04140b;font-weight:600}
+.btn.stop{color:#ffb4b2}
+.btn:disabled{opacity:.5;cursor:default}
+.pill{font-size:12px;padding:3px 9px;border-radius:99px;background:#1b2530;color:var(--mut);display:inline-flex;align-items:center;gap:6px}
+.pill.run{background:#3ddc8418;color:var(--acc)}.pill.err{background:#f25f5c1a;color:#ff9a97}.pill.wait{background:#f5b0411a;color:var(--warn)}
+.view{flex:1;overflow:auto;position:relative}
+iframe{border:0;width:100%;height:100%;display:block;background:#fff}
+/* overview */
+.wrap{padding:20px;max-width:1280px}
+.host{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.kpi .l{font-size:11.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em}
+.kpi .v{font:600 20px var(--mono);margin-top:4px}
+.bar{height:4px;background:#1b2530;border-radius:4px;margin-top:8px;overflow:hidden}.bar i{display:block;height:100%;background:var(--acc)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.card h3{margin:0;font-size:15.5px;display:flex;align-items:center;gap:9px}
+.card .d{color:var(--mut);font-size:13px;min-height:38px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stats div{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 9px}
+.stats small{display:block;font-size:10.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em}
+.stats b{font:600 13.5px var(--mono)}
+.ports{font:12.5px var(--mono);color:var(--mut)}
+.ports b{color:var(--tx);font-weight:500}
+.errline{font-size:12.5px;color:#ff9a97;background:#f25f5c12;border:1px solid #f25f5c30;border-radius:8px;padding:7px 9px;word-break:break-word}
+.acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto}
+.banner{background:#f5b04114;border:1px solid #f5b04140;color:#ffd58a;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:13.5px}
+/* logs drawer */
+.drawer{position:fixed;inset:0 0 0 auto;width:min(860px,100%);background:#070a0e;border-left:1px solid var(--line);transform:translateX(100%);transition:transform .2s;display:flex;flex-direction:column;z-index:20}
+.drawer.on{transform:none}
+.drawer .hd{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.drawer pre{flex:1;margin:0;overflow:auto;padding:12px 16px;font:12px/1.5 var(--mono);color:#b9c6d3;white-space:pre-wrap;word-break:break-all}
+.drawer pre .s{color:var(--acc)}.drawer pre .e{color:#ff9a97}
+/* settings */
+.sbox{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px;max-width:760px}
+.sbox h2{font-size:15px;margin:0 0 12px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:10px}
+.row label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--mut);flex:1;min-width:160px}
+input[type=text],input[type=password],input[type=number]{background:#0b1118;border:1px solid var(--line);border-radius:8px;color:var(--tx);padding:8px 10px;font-size:14px}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+td{padding:8px 6px;border-top:1px solid var(--line)}
+.note{color:var(--mut);font-size:12.5px}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#18222d;border:1px solid var(--line);padding:9px 16px;border-radius:9px;font-size:13.5px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:30}
+.toast.on{opacity:1}
+@media(max-width:760px){
+ body{flex-direction:column;overflow:auto}
+ .side{width:100%;flex-direction:row;align-items:center;border-right:0;border-bottom:1px solid var(--line)}
+ .brand{padding:10px 12px}.brand b{display:none}
+ .nav{display:flex;overflow-x:auto;padding:6px}.nav .sec{display:none}
+ .nav button{width:auto;flex:none}.sfoot{display:none}
+ .main{min-height:0;height:calc(100vh - 54px)}
+ .stats{grid-template-columns:repeat(2,1fr)}
+ .wrap{padding:14px 16px}
+}
+</style></head>
+<body>
+<aside class="side">
+  <div class="brand"><img src="/favicon.svg" width="28" height="28" alt=""><b>nTs<span>·</span>Suite</b></div>
+  <nav class="nav" id="nav"></nav>
+  <div class="sfoot"><span id="ver"></span><a href="/logout">Ieșire</a></div>
+</aside>
+<main class="main">
+  <div class="top" id="top"></div>
+  <div class="view" id="view"></div>
+</main>
+<div class="drawer" id="drawer">
+  <div class="hd"><b id="lgt">Jurnal</b><span class="sp"></span>
+    <label class="note"><input type="checkbox" id="lgf" checked> urmărește</label>
+    <button class="btn" onclick="closeLogs()">Închide</button></div>
+  <pre id="lgp"></pre>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+var S=null,cur='overview',logMod=null,frames={};
+var IC={overview:'◎',ntsrelay:'⇄',proxyhub:'⧉',rtmp:'◉',videoencoder:'▣',recmartori:'⏺',settings:'⚙'};
+function $(i){return document.getElementById(i)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function api(m,u,b,raw){return fetch('/suite/api/'+u,{method:m,headers:raw?{}:{'Content-Type':'application/json'},body:raw?b:(b?JSON.stringify(b):undefined)}).then(function(r){if(r.status===401){location.href='/login';throw new Error('neautentificat')}return r.json().then(function(j){if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j})})}
+function toast(t){var e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(e._t);e._t=setTimeout(function(){e.classList.remove('on')},2600)}
+function bytes(n){if(!n)return '–';var u=['B','KB','MB','GB','TB'],i=0;while(n>=1024&&i<4){n/=1024;i++}return n.toFixed(i>1?1:0)+' '+u[i]}
+function dur(s){if(!s)return '–';var d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);return d?d+'z '+h+'h':h?h+'h '+m+'m':m+'m '+(s%60)+'s'}
+function cls(st){return st==='pornit'?'run':st==='eroare'?'err':(st==='repornește'||st==='se oprește')?'wait':''}
+function mod(id){return S&&S.modules.filter(function(m){return m.id===id})[0]}
+
+function load(){return api('GET','status').then(function(j){S=j;render()}).catch(function(){})}
+function render(){
+  $('ver').textContent='v'+S.version;
+  var h='<div class="sec">General</div>'+nb('overview','Prezentare','')+'<div class="sec">Module</div>';
+  S.modules.forEach(function(m){h+=nb(m.id,m.name,cls(m.state))});
+  h+='<div class="sec">Sistem</div>'+nb('settings','Setări','');
+  $('nav').innerHTML=h;
+  if(cur==='overview')renderOverview();else if(cur==='settings'){if(!$('setRoot'))renderSettings()}else renderModuleTop();
+}
+function nb(id,name,c){return '<button class="'+(cur===id?'on':'')+'" onclick="go(\''+id+'\')"><span class="ic">'+IC[id]+'</span><span class="nm">'+esc(name)+'</span>'+(c!==''||mod(id)?'<span class="dot '+c+'"></span>':'')+'</button>'}
+
+function go(id){
+  cur=id;
+  Object.keys(frames).forEach(function(k){frames[k].style.display='none'});
+  if(id==='overview'||id==='settings'){$('view').querySelectorAll('.pagewrap').forEach(function(e){e.remove()});}
+  if(id==='settings'){renderSettings()}
+  else if(id!=='overview'){
+    $('view').querySelectorAll('.pagewrap').forEach(function(e){e.remove()});
+    var f=frames[id];
+    if(!f){f=document.createElement('iframe');f.src='/m/'+id+'/';frames[id]=f;$('view').appendChild(f)}
+    f.style.display='block';
+  }
+  render();
+  try{history.replaceState(null,'','#'+id)}catch(e){}
+}
+function page(html){var v=$('view');v.querySelectorAll('.pagewrap').forEach(function(e){e.remove()});var d=document.createElement('div');d.className='pagewrap';d.innerHTML=html;v.appendChild(d)}
+
+function renderOverview(){
+  $('top').innerHTML='<h1>Prezentare</h1><span class="meta">'+esc(S.host)+' · '+esc(S.os)+' · suită pornită de '+dur(S.uptime)+'</span>';
+  var mp=S.mem_total?S.mem_used/S.mem_total*100:0,run=S.modules.filter(function(m){return m.state==='pornit'}).length;
+  var h='';
+  if(S.default_pass)h+='<div class="banner">Folosești parola implicită <b>admin/admin</b>. Schimb-o din <a href="#" onclick="go(\'settings\');return false">Setări</a> – panoul controlează toate serviciile.</div>';
+  h+='<div class="host">'+
+    kpi('CPU server',S.cpu.toFixed(0)+'%',S.cpu)+kpi('RAM server',bytes(S.mem_used)+' / '+bytes(S.mem_total),mp)+
+    kpi('Module pornite',run+' / '+S.modules.length,-1)+
+    '<div class="kpi"><div class="l">Panou</div><div class="v" style="font-size:15px;margin-top:8px">port '+esc(S.listen.replace(/^.*:/,''))+'</div></div></div>';
+  h+='<div class="grid">';
+  S.modules.forEach(function(m){
+    var c=cls(m.state),on=m.state==='pornit'||m.state==='repornește';
+    h+='<div class="card"><h3><span class="dot '+c+'"></span>'+esc(m.name)+'<span class="sp"></span><span class="pill '+c+'">'+esc(m.state)+'</span></h3>'+
+      '<div class="d">'+esc(m.desc)+'</div>'+
+      '<div class="stats"><div><small>CPU</small><b>'+(m.pid?m.cpu.toFixed(0)+'%':'–')+'</b></div><div><small>RAM</small><b>'+bytes(m.mem)+'</b></div><div><small>Uptime</small><b>'+dur(m.uptime)+'</b></div><div><small>Reporniri</small><b>'+m.restarts+'</b></div></div>'+
+      '<div class="ports">'+(m.ports&&m.ports.length?'Porturi: <b>'+m.ports.map(esc).join(', ')+'</b>':'Panou doar prin suită (127.0.0.1:'+esc(m.panel)+')')+(m.pid?' · PID '+m.pid:'')+'</div>'+
+      (m.last_err&&m.state!=='pornit'?'<div class="errline">'+esc(m.last_err)+'</div>':'')+
+      (!m.bundled?'<div class="errline">Executabilul nu este inclus în această versiune.</div>':'')+
+      '<div class="acts">'+
+        (on?'<button class="btn stop" onclick="act(\''+m.id+'\',\'stop\')">Oprește</button><button class="btn" onclick="act(\''+m.id+'\',\'restart\')">Repornește</button>'
+           :'<button class="btn go" onclick="act(\''+m.id+'\',\'start\')">Pornește</button>')+
+        '<button class="btn" onclick="go(\''+m.id+'\')">Panou</button><button class="btn" onclick="openLogs(\''+m.id+'\')">Jurnal</button>'+
+      '</div></div>';
+  });
+  page('<div class="wrap">'+h+'</div></div>');
+}
+function kpi(l,v,p){return '<div class="kpi"><div class="l">'+l+'</div><div class="v">'+v+'</div>'+(p<0?'':'<div class="bar"><i style="width:'+Math.min(100,Math.max(0,p||0)).toFixed(0)+'%;background:'+(p>85?'var(--bad)':p>65?'var(--warn)':'var(--acc)')+'"></i></div>')+'</div>'}
+
+function renderModuleTop(){
+  var m=mod(cur);if(!m)return;var c=cls(m.state),on=m.state==='pornit'||m.state==='repornește';
+  $('top').innerHTML='<h1>'+esc(m.name)+'</h1><span class="pill '+c+'"><span class="dot '+c+'"></span>'+esc(m.state)+'</span>'+
+   '<span class="meta">'+(m.pid?'CPU '+m.cpu.toFixed(0)+'% · RAM '+bytes(m.mem)+' · '+dur(m.uptime):'')+(m.ports&&m.ports.length?' · porturi '+m.ports.join(', '):'')+'</span><span class="sp"></span>'+
+   (on?'<button class="btn stop" onclick="act(\''+m.id+'\',\'stop\')">Oprește</button><button class="btn" onclick="act(\''+m.id+'\',\'restart\')">Repornește</button>'
+      :'<button class="btn go" onclick="act(\''+m.id+'\',\'start\')">Pornește</button>')+
+   '<button class="btn" onclick="reloadFrame()">Reîncarcă</button><button class="btn" onclick="window.open(\'/m/'+m.id+'/\')">Tab nou</button><button class="btn" onclick="openLogs(\''+m.id+'\')">Jurnal</button>';
+}
+function reloadFrame(){var f=frames[cur];if(f)f.src='/m/'+cur+'/'}
+function act(id,a){
+  var m=mod(id);if(a==='stop'&&!confirm('Oprești '+m.name+'? Streamurile servite de el se vor opri.'))return;
+  toast((a==='start'?'Pornesc ':a==='stop'?'Opresc ':'Repornesc ')+m.name+'…');
+  api('POST','module/'+id+'/'+a).then(function(){return load()}).then(function(){
+    if(frames[id]&&a!=='stop')setTimeout(function(){frames[id].src='/m/'+id+'/'},1200)
+  }).catch(function(e){toast(e.message);load()});
+}
+
+// jurnal
+var lgTimer=null;
+function openLogs(id){logMod=id;$('lgt').textContent='Jurnal · '+mod(id).name;$('drawer').classList.add('on');pull();clearInterval(lgTimer);lgTimer=setInterval(pull,2000)}
+function closeLogs(){$('drawer').classList.remove('on');clearInterval(lgTimer);logMod=null}
+function pull(){if(!logMod)return;api('GET','module/'+logMod+'/logs').then(function(j){
+  var p=$('lgp'),atEnd=p.scrollTop+p.clientHeight>=p.scrollHeight-30;
+  p.innerHTML=j.lines.map(function(l){var c=l.indexOf('[suite]')>0?'s':/eroare|error|fatal|panic|fail/i.test(l)?'e':'';return c?'<span class="'+c+'">'+esc(l)+'</span>':esc(l)}).join('\n')||'(gol)';
+  if($('lgf').checked&&atEnd||$('lgf').checked&&p._first!==logMod){p.scrollTop=p.scrollHeight;p._first=logMod}
+})}
+
+// setări
+function renderSettings(){
+  $('top').innerHTML='<h1>Setări</h1><span class="meta">date: '+esc(S.data_dir)+'</span>';
+  var rows=S.modules.map(function(m){return '<tr><td><b>'+esc(m.name)+'</b><div class="note">'+(m.ports&&m.ports.length?'porturi '+m.ports.join(', '):'doar prin suită')+'</div></td>'+
+    '<td style="text-align:right;white-space:nowrap"><a class="btn" href="/suite/api/module/'+m.id+'/config" style="text-decoration:none">Export</a> '+
+    '<label class="btn">Import<input type="file" accept=".json,application/json" hidden onchange="imp(\''+m.id+'\',this)"></label></td></tr>'}).join('');
+  page('<div class="wrap" id="setRoot">'+
+   '<div class="sbox"><h2>Cont panou</h2><div class="row"><label>Utilizator<input type="text" id="su" value="'+esc(S.user)+'"></label><label>Parola actuală<input type="password" id="so"></label><label>Parola nouă<input type="password" id="sn"></label><button class="btn go" onclick="savePass()">Salvează</button></div>'+
+   '<div class="note">Contul acesta controlează toate modulele. Parolele interne ale modulelor sunt gestionate automat de suită.</div></div>'+
+   '<div class="sbox"><h2>Port panou</h2><div class="row"><label>Port<input type="number" id="sl" value="'+esc(S.listen.replace(/^.*:/,''))+'"></label><button class="btn" onclick="savePort()">Salvează</button></div><div class="note">Necesită repornirea suitei.</div></div>'+
+   '<div class="sbox"><h2>Configurații module</h2><table>'+rows+'</table>'+
+   '<div class="note" style="margin-top:10px">Import = mută configurația unei instalări existente (canale, streamuri, înregistrări) în suită. Modulul e repornit automat; vechea configurație se păstrează ca .bak. Parola și portul panoului se ajustează singure.</div></div>'+
+   '</div>');
+}
+function savePass(){api('POST','password',{User:$('su').value,Old:$('so').value,New:$('sn').value}).then(function(){toast('Cont actualizat');$('so').value=$('sn').value='';load()}).catch(function(e){toast(e.message)})}
+function savePort(){api('POST','settings',{Listen:':'+$('sl').value}).then(function(j){toast(j.msg)}).catch(function(e){toast(e.message)})}
+function imp(id,inp){var f=inp.files[0];if(!f)return;if(!confirm('Înlocuiești configurația '+mod(id).name+' cu '+f.name+'?'))return;
+  f.text().then(function(t){return api('POST','module/'+id+'/config',t,true)}).then(function(){toast('Configurație importată');load()}).catch(function(e){toast(e.message)})}
+
+var h0=location.hash.slice(1);
+load().then(function(){if(h0&&(h0==='settings'||mod(h0)))go(h0);else render()});
+setInterval(function(){if(!document.hidden)load()},3000);
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeLogs()});
+</script>
+</body></html>

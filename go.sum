@@ -1,0 +1,4 @@
+github.com/golang/sys v0.34.0 h1:hAXLXIPulCqkT1T6t+fBNkAEoyJRHpHhvhZYDZasD+A=
+github.com/golang/sys v0.34.0/go.mod h1:BJP2sWEmIv4KK5OTEluFJCKSidICx8ciO85XgH3Ak8k=
+github.com/kardianos/service v1.3.0 h1:/LGy+xPP2TM+GLTiCZ2di7cy0Jd/qrawlTUfqKYFdTI=
+github.com/kardianos/service v1.3.0/go.mod h1:E4V9ufUuY82F7Ztlu1eN9VXWIQxg8NoLQlmFe0MtrXc=
