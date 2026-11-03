@@ -17,7 +17,7 @@ import (
 	"github.com/kardianos/service"
 )
 
-const version = "1.0.0"
+const version = "1.0.1"
 
 type program struct {
 	srv *http.Server

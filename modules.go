@@ -34,6 +34,10 @@ type Module struct {
 	NoXFF          bool // nu trimite X-Forwarded-For (VideoEncoder: acces local fără parolă)
 	Basic          bool // autentificare HTTP Basic (nTs-relay)
 
+	// "serviciul" modulului este suita: răspunsuri înlocuite + câmpuri JSON forțate
+	Fake      map[string]func() (int, any) // "METODĂ /cale" -> răspuns
+	JSONPatch map[string]map[string]any    // "/cale" -> câmpuri suprascrise în răspunsul JSON
+
 	prepare     func(m *Module) error
 	args        func(m *Module) []string
 	env         []string
@@ -84,6 +88,33 @@ var modules = []*Module{
 		Desc:  "Înregistrări martor FFmpeg pe segmente (M9TV, M9 Plus...)",
 		Entry: "/", LoginPaths: []string{"/login"}, LogoutPaths: []string{"/logout"},
 	},
+}
+
+const managedMsg = "Modulul rulează deja ca serviciu prin nTs-Suite – nu e nevoie de un serviciu separat. Pornirea automată se face din suită (Prezentare → Pornește)."
+
+func init() {
+	busy := func() (int, any) { return 409, managedMsg }
+	rm := modByID("recmartori")
+	rm.Fake = map[string]func() (int, any){
+		"GET /api/service": func() (int, any) {
+			return 200, map[string]any{"supported": true, "is_service": true, "installed": true, "state": "running",
+				"admin": true, "last_result": "gestionat de nTs-Suite", "pid": procs["recmartori"].Info(true).PID}
+		},
+		"POST /api/service/install":   busy,
+		"POST /api/service/uninstall": busy,
+	}
+	rm.JSONPatch = map[string]map[string]any{"/api/status": {"service": true}}
+
+	ve := modByID("videoencoder")
+	ve.Fake = map[string]func() (int, any){
+		"GET /api/service": func() (int, any) {
+			return 200, map[string]any{"supported": true, "state": "running", "is_service": true, "name": "nTs-Suite"}
+		},
+	}
+	for _, a := range []string{"install", "uninstall", "start", "stop", "restart"} {
+		ve.Fake["POST /api/service/"+a] = busy
+	}
+	ve.JSONPatch = map[string]map[string]any{"/api/system": {"is_service": true}}
 }
 
 func modByID(id string) *Module {

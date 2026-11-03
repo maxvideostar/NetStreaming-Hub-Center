@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"html"
 	"io"
@@ -83,6 +84,16 @@ func serveModule(w http.ResponseWriter, r *http.Request, m *Module, sub string) 
 	}
 	if r.Method == "GET" && nav && inList(sub, m.LoginPaths) {
 		http.Redirect(w, r, pre+m.Entry, http.StatusFound)
+		return
+	}
+
+	if f := m.Fake[r.Method+" "+sub]; f != nil {
+		code, v := f()
+		if s, ok := v.(string); ok {
+			http.Error(w, s, code)
+		} else {
+			writeJSON(w, code, v)
+		}
 		return
 	}
 
@@ -213,6 +224,20 @@ func serveModule(w http.ResponseWriter, r *http.Request, m *Module, sub string) 
 	}
 
 	ct := strings.ToLower(resp.Header.Get("Content-Type"))
+	if patch := m.JSONPatch[sub]; patch != nil && strings.Contains(ct, "json") && resp.StatusCode == 200 {
+		var v map[string]any
+		if b, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20)); err == nil && json.Unmarshal(b, &v) == nil {
+			for k, x := range patch {
+				v[k] = x
+			}
+			out, _ := json.Marshal(v)
+			h.Del("Content-Length")
+			h.Set("Content-Length", fmt.Sprint(len(out)))
+			w.WriteHeader(resp.StatusCode)
+			w.Write(out)
+			return
+		}
+	}
 	isHTML := strings.Contains(ct, "text/html")
 	isJS := strings.Contains(ct, "javascript")
 	if (isHTML || isJS) && resp.ContentLength < 8<<20 && r.Method != "HEAD" {
