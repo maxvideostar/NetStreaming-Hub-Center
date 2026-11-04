@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -123,6 +124,10 @@ type Proc struct {
 	mem   uint64
 	cpuT  float64
 	cpuAt time.Time
+
+	portKey   string         // porturile din config la pornirea procesului
+	portSnap  map[string]any // valorile câmpurilor de port la pornire
+	portSince time.Time      // de când config-ul are alte porturi
 }
 
 var procs = map[string]*Proc{}
@@ -304,6 +309,16 @@ func (p *Proc) spawn() (*exec.Cmd, *platProc, error) {
 	p.started = time.Now()
 	p.state = "pornit"
 	p.cpuT, p.cpuAt = 0, time.Time{}
+	p.portKey, p.portSince = portsKey(m), time.Time{}
+	p.portSnap = map[string]any{}
+	if c, err := readMap(m.CfgPath()); err == nil {
+		for _, k := range m.PortKeys {
+			if v, ok := c[k]; ok {
+				p.portSnap[k] = v
+			}
+		}
+	}
+	m.setActivePort(m.panelPort(m))
 	p.mu.Unlock()
 	p.logf("pornit (PID %d) %s %s", cmd.Process.Pid, filepath.Base(m.BinPath()), strings.Join(m.args(m), " "))
 	return cmd, pl, nil
@@ -403,3 +418,87 @@ func (p *Proc) Info(enabled bool) ProcInfo {
 }
 
 var _ = io.Discard
+
+func tcpAlive(port string) bool {
+	c, err := net.DialTimeout("tcp", "127.0.0.1:"+port, 700*time.Millisecond)
+	if err != nil {
+		return false
+	}
+	c.Close()
+	return true
+}
+
+// portWatch – portul unui modul a fost schimbat din panoul lui:
+//   - dacă modulul s-a mutat singur pe noile porturi (ProxyHub, VideoEncoder), suita îl urmează;
+//   - altfel (RTMP Media Server, nTs-relay…) modulul e repornit ca să aplice portul nou;
+//   - dacă noul port e deja ocupat de suită/alt modul, rămâne pe cel vechi și apare eroarea.
+func portWatch() {
+	for range time.Tick(2 * time.Second) {
+		for _, m := range modules {
+			p := procs[m.ID]
+			p.mu.Lock()
+			pid, key, since := p.pid, p.portKey, p.portSince
+			p.mu.Unlock()
+			if pid == 0 || key == "" {
+				continue
+			}
+			now := portsKey(m)
+			if now == key {
+				continue
+			}
+			if since.IsZero() {
+				p.mu.Lock()
+				p.portSince = time.Now()
+				p.mu.Unlock()
+				continue
+			}
+			if time.Since(since) < 4*time.Second { // lasă modulul să-și termine salvarea/repornirea internă
+				continue
+			}
+			// portul nou e ocupat de suită / alt modul -> revin la porturile vechi în config
+			if err := portConflict(m); err != nil {
+				p.mu.Lock()
+				snap := p.portSnap
+				p.mu.Unlock()
+				if c, rerr := readMap(m.CfgPath()); rerr == nil && snap != nil {
+					for _, k := range m.PortKeys {
+						if v, ok := snap[k]; ok {
+							c[k] = v
+						} else {
+							delete(c, k)
+						}
+					}
+					writeMap(m.CfgPath(), c)
+				}
+				p.mu.Lock()
+				p.portSince, p.lastErr = time.Time{}, err.Error()+" – am revenit la portul vechi"
+				p.mu.Unlock()
+				p.logf("%v – am revenit la portul vechi în configurație", err)
+				if !tcpAlive(m.activePort()) { // modulul și-a închis deja panoul (ex. ProxyHub) -> repornire pe portul vechi
+					go p.Restart()
+				}
+				continue
+			}
+			alive := true
+			for _, pt := range append(m.publicPorts(m), m.panelPort(m)) {
+				if pt != "" && !tcpAlive(pt) {
+					alive = false
+					break
+				}
+			}
+			if alive {
+				m.setActivePort(m.panelPort(m))
+				p.mu.Lock()
+				p.portKey, p.portSince, p.lastErr = now, time.Time{}, ""
+				p.mu.Unlock()
+				p.logf("porturi noi active: %s", now)
+				continue
+			}
+			p.logf("porturile s-au schimbat (%s → %s) – repornesc modulul ca să le aplice", key, now)
+			go p.Restart()
+			p.mu.Lock()
+			p.portKey = now
+			p.mu.Unlock()
+		}
+	}
+}

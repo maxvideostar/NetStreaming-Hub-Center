@@ -17,11 +17,9 @@ import (
 	"github.com/kardianos/service"
 )
 
-const version = "1.0.2"
+const version = "1.0.3"
 
-type program struct {
-	srv *http.Server
-}
+type program struct{}
 
 func (p *program) Start(s service.Service) error {
 	go p.run()
@@ -39,9 +37,8 @@ func (p *program) run() {
 			procs[m.ID].Start()
 		}
 	}
-	p.srv = &http.Server{Addr: c.Listen, Handler: handler(), ReadHeaderTimeout: 15 * time.Second}
-	ln, err := net.Listen("tcp", c.Listen)
-	if err != nil {
+	go portWatch()
+	if err := serveOn(c.Listen); err != nil {
 		log.Printf("EROARE: nu pot asculta pe %s: %v", c.Listen, err)
 		os.Exit(1)
 	}
@@ -49,9 +46,39 @@ func (p *program) run() {
 	if service.Interactive() && os.Getenv("NTS_NOBROWSER") == "" {
 		openBrowser("http://localhost:" + portOf(c.Listen, "8090") + "/")
 	}
-	if err := p.srv.Serve(ln); err != nil && err != http.ErrServerClosed {
-		log.Printf("EROARE http: %v", err)
+}
+
+var (
+	srvMu  sync.Mutex
+	curSrv *http.Server
+)
+
+// serveOn pornește panoul pe addr; vechiul listener se închide după câteva secunde
+// (schimbarea portului suitei se aplică imediat, fără repornire).
+func serveOn(addr string) error {
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
 	}
+	s := &http.Server{Handler: handler(), ReadHeaderTimeout: 15 * time.Second}
+	srvMu.Lock()
+	old := curSrv
+	curSrv = s
+	srvMu.Unlock()
+	go func() {
+		if err := s.Serve(ln); err != nil && err != http.ErrServerClosed {
+			log.Printf("EROARE http: %v", err)
+		}
+	}()
+	if old != nil {
+		go func() {
+			time.Sleep(4 * time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			old.Shutdown(ctx)
+			cancel()
+		}()
+	}
+	return nil
 }
 
 func (p *program) Stop(s service.Service) error {
@@ -70,9 +97,12 @@ func (p *program) Stop(s service.Service) error {
 		}(procs[m.ID])
 	}
 	wg.Wait()
-	if p.srv != nil {
+	srvMu.Lock()
+	hs := curSrv
+	srvMu.Unlock()
+	if hs != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-		p.srv.Shutdown(ctx)
+		hs.Shutdown(ctx)
 		cancel()
 	}
 	return nil

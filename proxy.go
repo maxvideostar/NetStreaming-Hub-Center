@@ -156,7 +156,7 @@ func serveModule(w http.ResponseWriter, r *http.Request, m *Module, sub string) 
 		out.Header.Del("X-Forwarded-For")
 		out.Header.Del("X-Real-IP")
 		out.Header.Del("Forwarded")
-		out.Host = "127.0.0.1:" + m.panelPort(m)
+		out.Host = "127.0.0.1:" + m.activePort()
 		origin := "http://" + out.Host
 		if out.Header.Get("Origin") != "" {
 			out.Header.Set("Origin", origin)
@@ -307,6 +307,8 @@ func rewriteBody(m *Module, b []byte, isHTML bool) []byte {
 	s := string(b)
 	s = reAttr.ReplaceAllString(s, "${1}"+pre+"/${2}")
 	s = reAttrRoot.ReplaceAllString(s, "${1}"+pre+"/${2}")
+	// ProxyHub: după schimbarea portului, rămâi în suită (nu sări direct pe portul modulului)
+	s = strings.ReplaceAll(s, "location.href=location.protocol+'//'+location.hostname+':'+port+'/panel'", "location.href='"+pre+"/panel'")
 	if m.originPort != nil {
 		// linkurile de stream afișate în panou trebuie să arate portul modulului, nu 8090
 		s = strings.ReplaceAll(s, "location.origin", "(location.protocol+'//'+location.hostname+':"+m.originPort(m)+"')")

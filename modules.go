@@ -46,9 +46,11 @@ type Module struct {
 	originPort  func(m *Module) string   // pentru rescrierea location.origin în panou
 	login       func(m *Module) error
 
-	jarMu   sync.Mutex
-	jar     map[string]string
-	lastFix time.Time
+	jarMu    sync.Mutex
+	jar      map[string]string
+	lastFix  time.Time
+	PortKeys []string // câmpurile de port din configurația modulului (pentru revenire la conflict)
+	curPort  string   // portul panoului pe care ascultă procesul ACUM (config poate fi deja schimbat)
 }
 
 func (m *Module) Dir() string     { return filepath.Join(dataDir, m.ID) }
@@ -115,6 +117,19 @@ func init() {
 		ve.Fake["POST /api/service/"+a] = busy
 	}
 	ve.JSONPatch = map[string]map[string]any{"/api/system": {"is_service": true}}
+}
+
+func init() {
+	keys := map[string][]string{
+		"ntsrelay":     {"listen", "listen_extra"},
+		"proxyhub":     {"listen", "udpxy_listen", "udpxy_enabled"},
+		"rtmp":         {"http_port", "rtmp_port"},
+		"videoencoder": {"port", "bind"},
+		"recmartori":   {"listen"},
+	}
+	for id, k := range keys {
+		modByID(id).PortKeys = k
+	}
 }
 
 func modByID(id string) *Module {
@@ -389,7 +404,27 @@ var loginClient = &http.Client{
 	CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 }
 
-func (m *Module) base() string { return "http://127.0.0.1:" + m.panelPort(m) }
+func (m *Module) activePort() string {
+	m.jarMu.Lock()
+	p := m.curPort
+	m.jarMu.Unlock()
+	if p == "" {
+		p = m.panelPort(m)
+	}
+	return p
+}
+
+func (m *Module) setActivePort(p string) {
+	m.jarMu.Lock()
+	m.curPort = p
+	m.jarMu.Unlock()
+}
+
+func (m *Module) base() string { return "http://127.0.0.1:" + m.activePort() }
+
+func portsKey(m *Module) string {
+	return strings.Join(append(append([]string{}, m.publicPorts(m)...), "panel:"+m.panelPort(m)), ",")
+}
 
 func (m *Module) cookieHeader() string {
 	m.jarMu.Lock()

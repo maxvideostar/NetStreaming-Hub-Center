@@ -236,8 +236,32 @@ func suiteRoutes(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, 400, map[string]string{"error": "port invalid"})
 			return
 		}
+		if port == portOf(getCfg().Listen, "8090") {
+			writeJSON(w, 200, map[string]any{"ok": true, "port": port})
+			return
+		}
+		for _, m := range modules {
+			pr := procs[m.ID]
+			pr.mu.Lock()
+			act := pr.active
+			pr.mu.Unlock()
+			if !act {
+				continue
+			}
+			for _, pt := range append(m.publicPorts(m), m.panelPort(m)) {
+				if pt == port {
+					writeJSON(w, 400, map[string]string{"error": "portul " + port + " e folosit de " + m.Name})
+					return
+				}
+			}
+		}
+		if err := serveOn(":" + port); err != nil {
+			writeJSON(w, 400, map[string]string{"error": "nu pot asculta pe portul " + port + ": " + err.Error()})
+			return
+		}
 		updateCfg(func(c *SuiteCfg) { c.Listen = ":" + port })
-		writeJSON(w, 200, map[string]any{"ok": true, "msg": "Salvat. Repornește nTs-Suite ca să asculte pe portul " + port})
+		log.Printf("panoul s-a mutat pe portul %s", port)
+		writeJSON(w, 200, map[string]any{"ok": true, "port": port})
 	case strings.HasPrefix(p, "module/"):
 		parts := strings.Split(strings.TrimPrefix(p, "module/"), "/")
 		if len(parts) != 2 {

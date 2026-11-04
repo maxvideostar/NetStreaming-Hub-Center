@@ -210,13 +210,13 @@ function renderSettings(){
   page('<div class="wrap" id="setRoot">'+
    '<div class="sbox"><h2>Cont panou</h2><div class="row"><label>Utilizator<input type="text" id="su" value="'+esc(S.user)+'"></label><label>Parola actuală<input type="password" id="so"></label><label>Parola nouă<input type="password" id="sn"></label><button class="btn go" onclick="savePass()">Salvează</button></div>'+
    '<div class="note">Contul acesta controlează toate modulele. Parolele interne ale modulelor sunt gestionate automat de suită.</div></div>'+
-   '<div class="sbox"><h2>Port panou</h2><div class="row"><label>Port<input type="number" id="sl" value="'+esc(S.listen.replace(/^.*:/,''))+'"></label><button class="btn" onclick="savePort()">Salvează</button></div><div class="note">Necesită repornirea suitei.</div></div>'+
+   '<div class="sbox"><h2>Port panou</h2><div class="row"><label>Port<input type="number" id="sl" value="'+esc(S.listen.replace(/^.*:/,''))+'"></label><button class="btn" onclick="savePort()">Salvează</button></div><div class="note">Se aplică imediat; ești redirecționat pe portul nou. Nu uita să-l deschizi și în router/firewall-ul extern dacă accesezi din afară.</div></div>'+
    '<div class="sbox"><h2>Configurații module</h2><table>'+rows+'</table>'+
    '<div class="note" style="margin-top:10px">Import = mută configurația unei instalări existente (canale, streamuri, înregistrări) în suită. Modulul e repornit automat; vechea configurație se păstrează ca .bak. Parola și portul panoului se ajustează singure.</div></div>'+
    '</div>');
 }
 function savePass(){api('POST','password',{User:$('su').value,Old:$('so').value,New:$('sn').value}).then(function(){toast('Cont actualizat');$('so').value=$('sn').value='';load()}).catch(function(e){toast(e.message)})}
-function savePort(){api('POST','settings',{Listen:':'+$('sl').value}).then(function(j){toast(j.msg)}).catch(function(e){toast(e.message)})}
+function savePort(){api('POST','settings',{Listen:':'+$('sl').value}).then(function(j){toast('Mut panoul pe portul '+j.port+'…');setTimeout(function(){location.href=location.protocol+'//'+location.hostname+':'+j.port+'/#settings'},1200)}).catch(function(e){toast(e.message)})}
 function imp(id,inp){var f=inp.files[0];if(!f)return;if(!confirm('Înlocuiești configurația '+mod(id).name+' cu '+f.name+'?'))return;
   f.text().then(function(t){return api('POST','module/'+id+'/config',t,true)}).then(function(){toast('Configurație importată');load()}).catch(function(e){toast(e.message)})}
 
