@@ -22,7 +22,7 @@ Un singur program, un singur panou pe **portul 8090**, pentru toate cele 5 aplic
 
 ## Instalare
 
-**Windows** – dezarhivează `nts-suite-windows-x64.zip` și rulează `Install-nTs-Suite.bat`. Instalează în `C:\nTs-Suite`, ca serviciu, dezactivează vechile servicii separate (ProxyHub, VideoEncoder, RecMartori, rtmp-media-server, StreamHub) ca să elibereze porturile și deschide firewall-ul. Pune `ffmpeg.exe` + `ffprobe.exe` în `C:\nTs-Suite\data\bin` (sau în PATH).
+**Windows** – dezarhivează `nts-suite-windows-x64.zip` și rulează `Install-nTs-Suite.bat`. Instalează în `C:\nTs-Suite`, ca serviciu, dezactivează vechile servicii separate (ProxyHub, VideoEncoder, RecMartori, rtmp-media-server, StreamHub) ca să elibereze porturile și deschide firewall-ul. FFmpeg (BtbN win64-gpl) se descarcă automat în `C:\nTs-Suite\data\bin`.
 
 **Ubuntu** –
 ```bash

@@ -24,6 +24,23 @@ if not exist "%DEST%" mkdir "%DEST%"
 sc query nTs-Suite >nul 2>&1 && (sc stop nTs-Suite >nul 2>&1 & timeout /t 4 >nul)
 copy /Y "%SRC%" "%DEST%\nts-suite.exe" >nul || (echo Copiere esuata & pause & exit /b 1)
 
+echo.
+echo == FFmpeg ==
+if not exist "%DEST%\data\bin" mkdir "%DEST%\data\bin"
+if exist "%DEST%\data\bin\ffmpeg.exe" (
+  echo   ffmpeg exista deja in %DEST%\data\bin
+) else (
+  echo   Descarc FFmpeg ^(BtbN, win64-gpl^)... poate dura 1-2 minute
+  powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+    "$ErrorActionPreference='Stop'; [Net.ServicePointManager]::SecurityProtocol='Tls12';" ^
+    "$z=Join-Path $env:TEMP 'nts-ffmpeg.zip'; $x=Join-Path $env:TEMP 'nts-ffmpeg';" ^
+    "Invoke-WebRequest -UseBasicParsing -Uri 'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip' -OutFile $z;" ^
+    "if(Test-Path $x){Remove-Item $x -Recurse -Force}; Expand-Archive $z $x -Force;" ^
+    "Get-ChildItem $x -Recurse -Include ffmpeg.exe,ffprobe.exe | Copy-Item -Destination '%DEST%\data\bin' -Force;" ^
+    "Remove-Item $z,$x -Recurse -Force"
+  if exist "%DEST%\data\bin\ffmpeg.exe" (echo   ffmpeg instalat in %DEST%\data\bin) else (echo   EROARE la descarcare - pune manual ffmpeg.exe si ffprobe.exe in %DEST%\data\bin)
+)
+
 sc query nTs-Suite >nul 2>&1
 if errorlevel 1 (
   "%DEST%\nts-suite.exe" -data "%DEST%\data" install
@@ -35,6 +52,5 @@ if errorlevel 1 (
 echo.
 echo Panou:  http://localhost:8090   (prima autentificare: admin / admin)
 echo Date:   %DEST%\data
-echo ffmpeg: pune ffmpeg.exe + ffprobe.exe in %DEST%\data\bin  (sau in PATH)
 start "" http://localhost:8090
 pause
