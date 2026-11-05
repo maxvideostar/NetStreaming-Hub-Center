@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"embed"
 	"encoding/json"
 	"io"
@@ -315,6 +316,7 @@ func moduleAction(w http.ResponseWriter, r *http.Request, m *Module, act string)
 			return
 		}
 		b, err := io.ReadAll(io.LimitReader(r.Body, 8<<20))
+		b = bytes.TrimPrefix(b, []byte{0xEF, 0xBB, 0xBF})
 		var v map[string]any
 		if err != nil || json.Unmarshal(b, &v) != nil {
 			writeJSON(w, 400, map[string]string{"error": "fișierul nu este un JSON valid"})

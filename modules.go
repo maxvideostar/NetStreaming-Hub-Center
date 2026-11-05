@@ -151,6 +151,11 @@ func readMap(path string) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
+	// fișier salvat cu Notepad / PowerShell 5 -> BOM UTF-8; modulele (Go) nu-l acceptă
+	if bom := []byte{0xEF, 0xBB, 0xBF}; bytes.HasPrefix(b, bom) {
+		b = bytes.TrimPrefix(b, bom)
+		writeFileAtomic(path, b, 0600)
+	}
 	m := map[string]any{}
 	d := json.NewDecoder(bytes.NewReader(b))
 	d.UseNumber()
