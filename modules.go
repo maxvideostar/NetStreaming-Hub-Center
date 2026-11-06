@@ -267,6 +267,16 @@ func init() {
 				}
 			}
 		}
+		// porturi proprii pe canal (stil Astra: "port": ":4003" sau "192.168.88.247:4003")
+		if chs, ok := c["channels"].([]any); ok {
+			for _, x := range chs {
+				if cm, ok := x.(map[string]any); ok {
+					if p := portOf(str(cm, "port"), ""); p != "" {
+						ps = append(ps, p)
+					}
+				}
+			}
+		}
 		return ps
 	}
 	nr.originPort = nr.panelPort
