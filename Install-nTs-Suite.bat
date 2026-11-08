@@ -27,7 +27,11 @@ copy /Y "%SRC%" "%DEST%\nts-suite.exe" >nul || (echo Copiere esuata & pause & ex
 echo.
 echo == FFmpeg ==
 if not exist "%DEST%\data\bin" mkdir "%DEST%\data\bin"
-if exist "%DEST%\data\bin\ffmpeg.exe" (
+if exist "%~dp0ffmpeg.exe" (
+  copy /Y "%~dp0ffmpeg.exe" "%DEST%\data\bin\" >nul
+  if exist "%~dp0ffprobe.exe" copy /Y "%~dp0ffprobe.exe" "%DEST%\data\bin\" >nul
+  echo   ffmpeg copiat din pachet in %DEST%\data\bin
+) else if exist "%DEST%\data\bin\ffmpeg.exe" (
   echo   ffmpeg exista deja in %DEST%\data\bin
 ) else (
   echo   Descarc FFmpeg ^(BtbN, win64-gpl^)... poate dura 1-2 minute
