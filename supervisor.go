@@ -195,6 +195,15 @@ func (p *Proc) Stop() {
 	done, cmd, pl := p.done, p.cmd, p.plat
 	p.state = "se oprește"
 	p.mu.Unlock()
+	if cmd != nil && p.mod.gracefulStop != nil && p.mod.gracefulStop(p.mod) {
+		select {
+		case <-done:
+			p.logf("oprit curat")
+			return
+		case <-time.After(8 * time.Second):
+			p.logf("nu s-a oprit singur în 8 s – îl închid forțat")
+		}
+	}
 	if cmd != nil {
 		softKill(cmd, pl)
 		select {

@@ -45,6 +45,8 @@ type Module struct {
 	publicPorts func(m *Module) []string // porturi deschise spre clienți (afișare + conflicte)
 	originPort  func(m *Module) string   // pentru rescrierea location.origin în panou
 	login       func(m *Module) error
+	// gracefulStop cere modulului să se oprească singur (să-și salveze starea) înainte de kill
+	gracefulStop func(m *Module) bool
 
 	jarMu    sync.Mutex
 	jar      map[string]string
@@ -383,6 +385,21 @@ func init() {
 		return p
 	}
 	ve.publicPorts = func(m *Module) []string { return nil }
+	// oprire curată: VideoEncoder salvează joburile (jobs.json) și oprește ffmpeg,
+	// altfel după restart lista de joburi poate fi pierdută / stream-urile nu repornesc
+	ve.gracefulStop = func(m *Module) bool {
+		req, err := http.NewRequest("POST", m.base()+"/api/system/shutdown", nil)
+		if err != nil {
+			return false
+		}
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := (&http.Client{Timeout: 3 * time.Second}).Do(req)
+		if err != nil {
+			return false
+		}
+		resp.Body.Close()
+		return resp.StatusCode == 200
+	}
 
 	// Rec-Martori – panou doar local
 	rm := modByID("recmartori")
