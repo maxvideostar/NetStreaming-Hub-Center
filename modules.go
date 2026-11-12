@@ -427,6 +427,31 @@ func init() {
 	rm.login = func(m *Module) error {
 		return loginForm(m, "/login", url.Values{"user": {internalUser}, "pass": {ip()}})
 	}
+	// oprire curată: ffmpeg primește „q” și închide corect segmentul MP4 curent
+	rm.gracefulStop = func(m *Module) bool {
+		for try := 0; try < 2; try++ {
+			if err := m.ensureLogin(try > 0); err != nil {
+				return false
+			}
+			req, err := http.NewRequest("POST", m.base()+"/api/shutdown", nil)
+			if err != nil {
+				return false
+			}
+			req.Header.Set("Cookie", m.cookieHeader())
+			resp, err := (&http.Client{Timeout: 3 * time.Second}).Do(req)
+			if err != nil {
+				return false
+			}
+			resp.Body.Close()
+			if resp.StatusCode == 200 {
+				return true
+			}
+			if resp.StatusCode != 401 {
+				return false // versiune veche fără /api/shutdown
+			}
+		}
+		return false
+	}
 }
 
 // ---------------- login automat în module ----------------

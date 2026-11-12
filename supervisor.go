@@ -200,8 +200,8 @@ func (p *Proc) Stop() {
 		case <-done:
 			p.logf("oprit curat")
 			return
-		case <-time.After(8 * time.Second):
-			p.logf("nu s-a oprit singur în 8 s – îl închid forțat")
+		case <-time.After(20 * time.Second):
+			p.logf("nu s-a oprit singur în 20 s – îl închid forțat")
 		}
 	}
 	if cmd != nil {
